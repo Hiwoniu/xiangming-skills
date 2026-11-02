@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<!-- 【改这里】标题 -->
+<title>向明图解 01 · 双层架构</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  /* ===================== 规范区：不要改 ===================== */
+  @font-face { font-family: "PingFang SC"; src: local("PingFang SC"), local("PingFangSC-Regular"); font-weight: 400; }
+  @font-face { font-family: "PingFang SC"; src: local("PingFangSC-Semibold"); font-weight: 600 900; }
+  @font-face { font-family: "Hiragino Sans GB"; src: local("Hiragino Sans GB"); }
+  @font-face { font-family: "Noto Sans SC"; src: local("Noto Sans SC"); }
+  :root {
+    --bg: #F6F4EE; --card: #FFFDF8; --ink: #1F2328; --muted: #5B616B; --line: #D8D3C7;
+    --track: #ECE7DC; --well: #F3EEE3; --dotc: #DDD7C9;
+    --accent: #E8590C;
+    --bad: #C92A2A; --bad-bg: #F8E1E1; --good: #2B8A3E; --good-bg: #E3F1E6;
+    --im: #2F6FEB; --gh: #2D333B; --ci: #9C6B00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 900px; background: var(--bg); overflow: hidden; }
+  body { font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif; color: var(--ink); }
+  #root { position: relative; width: 1080px; height: 900px; overflow: hidden; background: var(--bg); }
+
+  .bg-dots { position: absolute; inset: -40px; background-image: radial-gradient(circle, var(--dotc) 1.6px, transparent 1.7px); background-size: 36px 36px; opacity: .55; }
+  .bg-ghost { position: absolute; right: -40px; bottom: 120px; font: 900 190px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: -6px; color: var(--ink); opacity: .035; white-space: nowrap; }
+  .bg-glow { position: absolute; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(232,89,12,.10), rgba(232,89,12,0) 65%); left: 520px; top: -260px; }
+  .brand { position: absolute; right: 56px; top: 58px; font-size: 24px; color: var(--muted); letter-spacing: 1px; z-index: 5; }
+
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .scene-content { width: 100%; height: 100%; padding: 50px 56px 48px; display: flex; flex-direction: column; }
+  .head { height: 170px; display: flex; flex-direction: column; gap: 12px; }
+  .pill { align-self: flex-start; font-size: 24px; font-weight: 700; color: var(--accent); border: 2.5px solid var(--accent); border-radius: 999px; padding: 4px 18px; }
+  .title { font-size: 54px; font-weight: 800; letter-spacing: -1px; line-height: 1.12; }
+  .sub { font-size: 28px; color: var(--muted); line-height: 1.3; }
+  .stage { position: relative; height: 520px; margin: 0 -56px; }
+  .verdict { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+  .chip { font-size: 30px; font-weight: 700; padding: 10px 22px; border-radius: 14px; white-space: nowrap; }
+  .chip.ok { color: var(--good); background: var(--good-bg); }
+  .chip.no { color: var(--bad); background: var(--bad-bg); }
+
+  /* 元件库（见 design-system.md 第 4 节） */
+  .abs { position: absolute; left: 0; top: 0; }
+  .bub { width: 80px; height: 50px; border-radius: 25px; color: #fff; font: 800 26px/50px "Helvetica Neue", Arial, sans-serif; text-align: center; box-shadow: 0 4px 10px rgba(31,35,40,.18); z-index: 4; }
+  .bub.IM { background: var(--im); } .bub.PR { background: var(--gh); } .bub.CI { background: var(--ci); }
+  .box { background: var(--card); border: 3px solid var(--ink); border-radius: 22px; }
+  .box.router { border-color: var(--accent); border-width: 4px; }
+  .box.worker { padding: 12px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .w-name { font-size: 28px; font-weight: 800; line-height: 1.2; }
+  .w-task { font-size: 24px; color: var(--muted); line-height: 1.2; }
+  .lbl { font-size: 34px; font-weight: 800; }
+  .small { font-size: 26px; color: var(--muted); }
+  .bar { height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--ink); transform-origin: left center; transform: scaleX(0); }
+  .stripe { width: 24px; height: 64px; border-radius: 5px; transform-origin: bottom center; }
+  .avatar { width: 120px; height: 120px; border-radius: 50%; background: var(--ink); color: var(--bg); font-size: 50px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .reply { width: 132px; height: 48px; border-radius: 12px; background: var(--card); border: 2.5px solid var(--bad); color: var(--bad); font-size: 24px; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 6; }
+  .good-reply { border: 3px solid var(--accent); border-radius: 18px; background: var(--card); font-size: 28px; font-weight: 700; padding: 0 22px; display: flex; align-items: center; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; z-index: 5; }
+  .qmark { width: 44px; height: 44px; border-radius: 50%; background: var(--bad); color: #fff; font-size: 30px; font-weight: 800; text-align: center; line-height: 44px; z-index: 5; }
+  .mem-row { height: 46px; border-radius: 10px; background: var(--well); display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+  .mem-tag { font-size: 24px; font-weight: 700; color: #fff; padding: 2px 10px; border-radius: 8px; white-space: nowrap; }
+  .mem-dot { width: 14px; height: 14px; border-radius: 50%; }
+  .big-count { display: flex; align-items: baseline; gap: 12px; }
+  .big-count b { font: 800 72px/1 "Helvetica Neue", Arial, sans-serif; color: var(--bad); font-variant-numeric: tabular-nums; }
+  .note-bad { font-size: 30px; font-weight: 700; color: var(--bad); white-space: nowrap; }
+  svg.wires { position: absolute; left: 0; top: 0; overflow: visible; }
+
+  .sum { width: 100%; height: 100%; padding: 50px 56px 48px; display: flex; flex-direction: column; justify-content: center; gap: 40px; }
+  .quote { font-size: 52px; font-weight: 800; line-height: 1.3; max-width: 900px; letter-spacing: -1px; }
+  .quote em { font-style: normal; color: var(--accent); }
+  .tbl { display: grid; grid-template-columns: 1fr 160px 160px; border-top: 3px solid var(--ink); }
+  .tbl > div { font-size: 30px; padding: 16px 6px; border-bottom: 2px solid var(--line); }
+  .tbl .th { font-weight: 800; color: var(--muted); font-size: 26px; }
+  .tbl .c { text-align: center; font-weight: 800; }
+  .tbl .y { color: var(--good); } .tbl .n { color: var(--bad); }
+  .tbl .hl { font-weight: 800; color: var(--accent); }
+
+  #wipe { position: absolute; inset: 0; background: var(--ink); z-index: 50; }
+
+  /* ===================== 本图解专用：【改这里】只许追加，只用 token ===================== */
+</style>
+</head>
+<body>
+<!-- 【改这里】data-duration 必须等于脚本里的 DUR -->
+<div id="root" data-composition-id="main" data-start="0" data-duration="29.5" data-width="1080" data-height="900">
+  <div class="bg-dots" data-layout-ignore></div>
+  <div class="bg-glow" data-layout-ignore></div>
+  <div class="bg-ghost" data-layout-ignore>SUPER-AGENT</div>
+  <div class="brand" data-layout-allow-occlusion>向明 · Super-agent 图解 01</div>
+
+  <section class="scene" id="s1">
+    <div class="scene-content">
+      <div class="head">
+        <div class="pill">方案 ①</div>
+        <div class="title">所有事件，塞进一个 Session</div>
+        <div class="sub">上下文最连续，可它一次只能干一件事</div>
+      </div>
+      <div class="stage" id="st1" data-layout-allow-overflow></div>
+      <div class="verdict">
+        <div class="chip ok">✓ 上下文连续</div>
+        <div class="chip no">✗ 串行排队，细节搅成一锅</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="s2">
+    <div class="scene-content">
+      <div class="head">
+        <div class="pill">方案 ②</div>
+        <div class="title">每条事件，新开一个 Session</div>
+        <div class="sub">并发拉满，可它们彼此不认识</div>
+      </div>
+      <div class="stage" id="st2" data-layout-allow-overflow></div>
+      <div class="verdict">
+        <div class="chip ok">✓ 吞吐最高</div>
+        <div class="chip no">✗ 结果割裂，回复打架</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="s3">
+    <div class="scene-content">
+      <div class="head">
+        <div class="pill">方案 ③ · 双层架构</div>
+        <div class="title">Router 管连续，Worker 管并发</div>
+        <div class="sub">Router 只接话、只派活；Worker 隔离执行，只向 Router 汇报</div>
+      </div>
+      <div class="stage" id="st3" data-layout-allow-overflow></div>
+      <div class="verdict">
+        <div class="chip ok">✓ 上下文连续</div>
+        <div class="chip ok">✓ 多任务并发</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene summary" id="s4">
+    <div class="sum">
+      <div class="pill">一句话</div>
+      <div class="quote">Session 应该是系统的<em>实现细节</em>，不该是用户的<em>认知负担</em>。</div>
+      <div class="tbl">
+        <div class="th">方案</div><div class="th c">连续性</div><div class="th c">吞吐</div>
+        <div class="r">① 一个 Session 包办</div><div class="c y">✓</div><div class="c n">✗</div>
+        <div class="r">② 每条事件一个 Session</div><div class="c n">✗</div><div class="c y">✓</div>
+        <div class="r hl">③ Router + Worker 双层</div><div class="c y">✓</div><div class="c y">✓</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="wipe"></div>
+
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+
+  /* ===================== 【改这里】时长与切场时间表 ===================== */
+  const DUR = 29.5;
+  const SCENES = [["#s1", 0], ["#s2", 7.4], ["#s3", 15.2], ["#s4", 25.2]];
+
+  /* ===================== helper：不要改 ===================== */
+  const C = { IM: "var(--im)", PR: "var(--gh)", CI: "var(--ci)" };
+  function el(parent, cls, html, style) {
+    const d = document.createElement("div");
+    d.className = cls;
+    if (html != null) d.innerHTML = html;
+    if (style) Object.assign(d.style, style);
+    parent.appendChild(d);
+    return d;
+  }
+  function bubble(parent, kind, x, y) {
+    const b = el(parent, "abs bub " + kind, kind);
+    gsap.set(b, { x: x, y: y });
+    return b;
+  }
+  function svg(parent) {
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("class", "wires");
+    s.setAttribute("width", "1080");
+    s.setAttribute("height", "520");
+    parent.appendChild(s);
+    return s;
+  }
+  // dash=false：返回可画线的实线（tween strokeDashoffset → 0）；dash=true：静态虚线
+  function line(s, x1, y1, x2, y2, color, dash) {
+    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+    l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+    l.setAttribute("stroke", color); l.setAttribute("stroke-width", "4");
+    l.setAttribute("stroke-linecap", "round");
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (dash) l.setAttribute("stroke-dasharray", "10 10");
+    else { l.setAttribute("stroke-dasharray", len); l.setAttribute("stroke-dashoffset", len); }
+    s.appendChild(l);
+    return l;
+  }
+  // 计数器：points = [[秒, 值], ...]，任意 seek 都正确
+  function counter(node, points, t0, t1) {
+    const proxy = { p: 0 };
+    tl.to(proxy, {
+      p: 1, duration: t1 - t0, ease: "none",
+      onUpdate: function () {
+        const t = t0 + this.progress() * (t1 - t0);
+        let v = points[0][1];
+        for (const [pt, pv] of points) if (pt <= t) v = pv;
+        node.textContent = v;
+      }
+    }, t0);
+  }
+  function header(scene, t) {
+    const q = (s) => scene.querySelector(s);
+    tl.from(q(".pill"), { x: -30, opacity: 0, duration: 0.45, ease: "power3.out" }, t);
+    tl.from(q(".title"), { y: 36, opacity: 0, duration: 0.6, ease: "expo.out" }, t + 0.1);
+    tl.from(q(".sub"), { y: 20, opacity: 0, duration: 0.5, ease: "power2.out" }, t + 0.25);
+  }
+  function verdict(scene, t) {
+    tl.from(scene.querySelectorAll(".chip"), { y: 24, scale: 0.92, opacity: 0, duration: 0.45, ease: "back.out(2)", stagger: 0.18 }, t);
+  }
+  // 切场：墨色擦除。背景层保持静止，不要给 .bg-* 加任何动画
+  tl.set(SCENES[0][0], { opacity: 1 }, 0);
+  tl.set("#wipe", { xPercent: -100 }, 0);
+  for (let i = 1; i < SCENES.length; i++) {
+    const [id, t] = SCENES[i];
+    tl.fromTo("#wipe", { xPercent: -100 }, { xPercent: 0, duration: 0.32, ease: "power2.in", immediateRender: false }, t - 0.32);
+    tl.set(SCENES[i - 1][0], { opacity: 0 }, t);
+    tl.set(id, { opacity: 1 }, t);
+    tl.to("#wipe", { xPercent: 100, duration: 0.36, ease: "power2.out" }, t + 0.02);
+  }
+
+  /* ===================== 【改这里】各场景动画 ===================== */
+  /* ---------- 场景 1：单 Session 排队 [原文 L62] ---------- */
+  (function () {
+    const T = SCENES[0][1];
+    const sc = document.querySelector("#s1");
+    const st = document.getElementById("st1");
+    header(sc, T + 0.15);
+
+    const BX = 640, BY = 40, BW = 380, BH = 400;
+    const box = el(st, "abs box", null, { left: BX + "px", top: BY + "px", width: BW + "px", height: BH + "px" });
+    el(box, "abs lbl", "Session", { left: "26px", top: "18px" });
+    const doing = el(box, "abs small", "处理中", { left: "26px", top: "160px" });
+    const bar = el(box, "abs bar", "<i></i>", { left: "26px", top: "204px", width: (BW - 52) + "px" }).querySelector("i");
+    el(box, "abs small", "上下文", { left: "26px", top: "248px" });
+    const stripes = el(box, "abs", null, { left: "26px", top: "296px", display: "flex", gap: "6px" });
+
+    const qc = el(st, "abs big-count", '<span class="small">排队中</span><b>0</b>', { left: "40px", top: "96px" });
+    const qn = qc.querySelector("b");
+    tl.from(box, { scale: 0.9, opacity: 0, duration: 0.6, ease: "back.out(1.6)" }, T + 0.3);
+    tl.from(qc, { x: -20, opacity: 0, duration: 0.5, ease: "power2.out" }, T + 0.6);
+
+    const kinds = ["IM", "PR", "CI", "IM", "PR", "IM", "CI", "PR", "IM", "CI"];
+    const A = [0.5, 1.0, 1.5, 2.0, 2.5, 3.7, 4.2, 4.7, 5.0, 6.2];
+    const TRAVEL = 0.7, D = 2.3, ROWY = 215, HEAD = 540, GAP = 88, END = SCENES[1][1];
+    const CUR = { x: BX + (BW - 80) / 2, y: BY + 88 };
+    const bubs = kinds.map((k) => bubble(st, k, -120, ROWY));
+
+    // 离散事件模拟：消息到达队尾 / 当前任务完成
+    let q = [], busy = null, freeAt = Infinity, ai = 0, nStripe = 0;
+    const qLen = [[0, 0]];
+    function startService(i, t) {
+      busy = i; freeAt = t + D;
+      tl.to(bubs[i], { x: CUR.x, y: CUR.y, duration: 0.45, ease: "power2.inOut" }, t + 0.1);
+      tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: D, ease: "none", immediateRender: false }, t + 0.2);
+    }
+    function finish(i, t) {
+      const n = nStripe++;
+      tl.to(bubs[i], { scale: 0.4, opacity: 0, duration: 0.3, ease: "power2.in" }, t);
+      const s = el(stripes, "stripe", null, { background: C[kinds[i]] });
+      tl.from(s, { scaleY: 0, duration: 0.35, ease: "back.out(2)" }, t + 0.25);
+    }
+    while (ai < A.length || freeAt < END) {
+      const tArr = ai < A.length ? A[ai] + TRAVEL : Infinity;
+      if (freeAt <= tArr && freeAt < END) {
+        const t = freeAt;
+        finish(busy, t);
+        busy = null; freeAt = Infinity;
+        if (q.length) {
+          startService(q.shift(), t);
+          q.forEach((j, k) => tl.to(bubs[j], { x: HEAD - k * GAP, duration: 0.4, ease: "power2.out" }, t + 0.3));
+          qLen.push([t, q.length]);
+        }
+      } else if (tArr !== Infinity) {
+        const i = ai++;
+        if (busy === null) {
+          tl.to(bubs[i], { x: CUR.x, y: CUR.y, duration: TRAVEL, ease: "power2.out" }, A[i]);
+          busy = i; freeAt = tArr + D;
+          tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: D, ease: "none", immediateRender: false }, tArr);
+        } else {
+          tl.to(bubs[i], { x: HEAD - q.length * GAP, duration: TRAVEL, ease: "power3.out" }, A[i]);
+          q.push(i);
+          qLen.push([tArr, q.length]);
+        }
+      } else break;
+    }
+    counter(qn, qLen, T, END);
+    tl.to(qn, { scale: 1.25, duration: 0.18, yoyo: true, repeat: 1, ease: "power1.inOut" }, T + 4.25);
+    tl.from(doing, { opacity: 0, duration: 0.3 }, T + 1.2);
+    verdict(sc, T + 4.6);
+  })();
+
+  /* ---------- 场景 2：每条事件一个 Session [原文 L64] ---------- */
+  (function () {
+    const T = SCENES[1][1];
+    const sc = document.querySelector("#s2");
+    const st = document.getElementById("st2");
+    header(sc, T + 0.35);
+
+    const cols = [230, 430, 630], rows = [40, 210], BW = 180, BH = 140;
+    const kinds = ["PR", "IM", "CI", "IM", "PR", "CI"];
+    const wires = svg(st);
+    const boxes = kinds.map((k, i) => {
+      const bx = cols[i % 3], by = rows[Math.floor(i / 3)];
+      const b = el(st, "abs box", null, { left: bx + "px", top: by + "px", width: BW + "px", height: BH + "px", borderWidth: "2.5px" });
+      el(b, "abs", "S" + (i + 1), { left: "14px", top: "8px", fontSize: "26px", fontWeight: "800" });
+      const bar = el(b, "abs bar", "<i></i>", { left: "16px", top: "110px", width: (BW - 32) + "px" }).querySelector("i");
+      const ta = T + 0.9 + i * 0.22;
+      const bub = bubble(st, k, bx + 90, by + 46);
+      tl.from(b, { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ta);
+      tl.from(bub, { y: by - 40, opacity: 0, duration: 0.5, ease: "power3.out" }, ta + 0.25);
+      tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 1.3, ease: "power1.inOut", immediateRender: false }, ta + 0.7);
+      return { bx, by };
+    });
+
+    // 两个 Session 改同一个 PR，却互不知情
+    const lk = line(wires, 320, 110, 520, 280, "var(--bad)", true);
+    tl.from(lk, { opacity: 0, duration: 0.4 }, T + 3.4);
+    const qm = el(st, "abs qmark", "?", { left: "398px", top: "173px" });
+    tl.from(qm, { scale: 0, duration: 0.4, ease: "back.out(3)" }, T + 3.6);
+    const note = el(st, "abs note-bad", "✗ S1 和 S5 都在改 PR #42，却互不知情", { left: "230px", top: "380px" });
+    tl.from(note, { x: -20, opacity: 0, duration: 0.5, ease: "power2.out" }, T + 3.8);
+
+    // 用户被 6 条回复同时轰炸（有意堆叠）
+    const av = el(st, "abs avatar", "你", { left: "900px", top: "40px" });
+    tl.from(av, { scale: 0.5, opacity: 0, duration: 0.5, ease: "back.out(2)" }, T + 0.7);
+    const fan = [[860, 186], [948, 204], [840, 244], [930, 262], [870, 300], [952, 322]];
+    boxes.forEach((o, i) => {
+      const r = el(st, "abs reply", "完成了！");
+      r.setAttribute("data-layout-allow-occlusion", "");
+      gsap.set(r, { x: o.bx + 24, y: o.by + 46, opacity: 0, scale: 0.6 });
+      const t = T + 4.4 + i * 0.12;
+      tl.to(r, { opacity: 1, scale: 1, duration: 0.15, ease: "none" }, t);
+      tl.to(r, { x: fan[i][0] - 30, y: fan[i][1], rotation: (i % 2 ? 6 : -5), duration: 0.55, ease: "power3.out" }, t);
+    });
+    tl.to(av, { rotation: 8, duration: 0.07, yoyo: true, repeat: 7, ease: "sine.inOut" }, T + 5.3);
+    const huh = el(st, "abs note-bad", "到底听谁的？", { left: "872px", top: "400px", fontSize: "28px" });
+    tl.from(huh, { y: 12, opacity: 0, duration: 0.4, ease: "power2.out" }, T + 5.5);
+    verdict(sc, T + 5.2);
+  })();
+
+  /* ---------- 场景 3：Router + Worker [原文 L66, L80, L95-97] ---------- */
+  (function () {
+    const T = SCENES[2][1];
+    const sc = document.querySelector("#s3");
+    const st = document.getElementById("st3");
+    header(sc, T + 0.35);
+
+    const RX = 140, RY = 30, RW = 320, RH = 340;
+    const wires = svg(st);
+    const router = el(st, "abs box router", null, { left: RX + "px", top: RY + "px", width: RW + "px", height: RH + "px" });
+    el(router, "abs lbl", "Router 层", { left: "22px", top: "14px", color: "var(--accent)" });
+    el(router, "abs small", "全局记忆", { left: "22px", top: "72px" });
+    const rows = [0, 1, 2].map((k) => el(router, "abs mem-row", null, { left: "18px", top: (116 + k * 66) + "px", width: (RW - 36) + "px" }));
+    tl.from(router, { x: -40, opacity: 0, duration: 0.6, ease: "expo.out" }, T + 0.5);
+    const glow = el(st, "abs", null, { left: (RX - 10) + "px", top: (RY - 10) + "px", width: (RW + 20) + "px", height: (RH + 20) + "px", borderRadius: "28px", boxShadow: "0 0 0 8px rgba(232,89,12,.28)", opacity: 0 });
+
+    const WX = 680, WW = 360, WH = 124, WT = [4, 142, 280];
+    const tasks = [
+      { k: "IM", name: "Worker A", task: "修复登录 Bug", tag: "A · 修 Bug" },
+      { k: "PR", name: "Worker B", task: "回应 PR #42 评审", tag: "B · PR 评审" },
+      { k: "CI", name: "Worker C", task: "排查 CI 失败", tag: "C · CI 失败" }
+    ];
+    const RO = { x: RX + RW, y: RY + RH / 2 };
+    const workers = tasks.map((o, i) => {
+      const w = el(st, "abs box worker", null, { left: WX + "px", top: WT[i] + "px", width: WW + "px", height: WH + "px", borderColor: C[o.k] });
+      el(w, "w-name", o.name);
+      el(w, "w-task", o.task);
+      const bar = el(w, "bar", "<i></i>", { marginTop: "4px" }).querySelector("i");
+      const ln = line(wires, RO.x, RO.y, WX, WT[i] + WH / 2, C[o.k], false);
+      return { w, ln, bar, y: WT[i] + WH / 2 };
+    });
+
+    function pulse(t) {
+      tl.fromTo(glow, { opacity: 0 }, { opacity: 1, duration: 0.15, yoyo: true, repeat: 1, ease: "power1.out", immediateRender: false }, t);
+    }
+    function inbound(kind, t) {
+      const b = bubble(st, kind, -120, RY + 150);
+      tl.to(b, { x: RX - 50, duration: 0.65, ease: "power3.out" }, t);
+      tl.to(b, { x: RX + 10, scale: 0.4, opacity: 0, duration: 0.25, ease: "power2.in" }, t + 0.65);
+      pulse(t + 0.75);
+    }
+    function dot(color, fromX, fromY, toX, toY, t) {
+      const d = el(st, "abs dot", null, { background: color });
+      gsap.set(d, { x: fromX - 9, y: fromY - 9, opacity: 0 });
+      tl.set(d, { opacity: 1 }, t);
+      tl.to(d, { x: toX - 9, y: toY - 9, duration: 0.55, ease: "power2.inOut" }, t);
+      tl.to(d, { opacity: 0, duration: 0.12 }, t + 0.55);
+    }
+
+    // 新任务：Router 冷启动 Worker
+    const starts = [T + 0.9, T + 1.9, T + 2.9];
+    tasks.forEach((o, i) => {
+      const t = starts[i];
+      inbound(o.k, t);
+      const tag = el(rows[i], "mem-tag", o.tag, { background: C[o.k] });
+      tl.from(tag, { x: -16, opacity: 0, duration: 0.35, ease: "power2.out" }, t + 0.8);
+      tl.to(workers[i].ln, { strokeDashoffset: 0, duration: 0.4, ease: "power2.inOut" }, t + 0.85);
+      tl.from(workers[i].w, { x: 30, opacity: 0, scale: 0.94, duration: 0.45, ease: "back.out(1.8)" }, t + 1.1);
+      tl.fromTo(workers[i].bar, { scaleX: 0 }, { scaleX: 1, duration: 6.2 - i * 1.2, ease: "power1.inOut", immediateRender: false }, t + 1.3);
+    });
+
+    // 后续消息：Router 认出归属，转给已有 Worker
+    [[0, "IM", T + 3.9], [1, "PR", T + 4.5]].forEach(([wi, k, t]) => {
+      inbound(k, t);
+      const md = el(rows[wi], "mem-dot", null, { background: C[k] });
+      tl.from(md, { scale: 0, duration: 0.3, ease: "back.out(3)" }, t + 0.8);
+      dot(C[k], RO.x, RO.y, WX, workers[wi].y, t + 0.85);
+    });
+
+    // Worker 只向 Router 汇报
+    workers.forEach((o, i) => dot(C[tasks[i].k], WX, o.y, RO.x, RO.y, T + 5.4 + i * 0.12));
+    pulse(T + 6.0);
+
+    // 对外只有一个声音
+    const av = el(st, "abs avatar", "你", { left: RX + "px", top: "424px", width: "90px", height: "90px", fontSize: "38px" });
+    const rep = el(st, "abs good-reply", "Router：3 件事都在推进，PR #42 已提交，等你验收 ✓", { left: (RX + 110) + "px", top: "424px", width: "790px", height: "90px" });
+    tl.from(av, { scale: 0.5, opacity: 0, duration: 0.45, ease: "back.out(2)" }, T + 5.9);
+    tl.from(rep, { x: -30, opacity: 0, duration: 0.55, ease: "expo.out" }, T + 6.0);
+    verdict(sc, T + 6.8);
+  })();
+
+  /* ---------- 总结页 [原文 L72] ---------- */
+  (function () {
+    const T = SCENES[3][1];
+    const sc = document.querySelector("#s4");
+    tl.from(sc.querySelector(".pill"), { y: 16, opacity: 0, duration: 0.4, ease: "power2.out" }, T + 0.3);
+    tl.from(sc.querySelector(".quote"), { y: 40, opacity: 0, duration: 0.7, ease: "expo.out" }, T + 0.4);
+    tl.from(sc.querySelectorAll(".tbl > div"), { y: 14, opacity: 0, duration: 0.3, ease: "power2.out", stagger: 0.04 }, T + 0.8);
+  })();
+
+  window.__timelines["main"] = tl;
+})();
+</script>
+</div>
+</body>
+</html>
