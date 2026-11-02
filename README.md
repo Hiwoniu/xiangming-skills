@@ -33,3 +33,7 @@ cp -r xiangming-skills/gzh-motion-diagram ~/.claude/skills/
 
 - **水印署名**：默认是"向明 · <系列名>图解 NN"。换成你自己的名字，只需改 `index.html` 里 `.brand` 的文字，审计脚本只要求"<署名> · <系列名>图解 NN"的格式。
 - **示例说明**：`examples/01-双层架构` 是根据 DeepSeek 公开文章《Super-agent 设计探索》做的解读图解，用来演示写法和节奏；原文不在本仓库内。
+
+## 许可证
+
+[MIT](LICENSE)：可以自由使用、修改和分发，保留版权声明即可。
