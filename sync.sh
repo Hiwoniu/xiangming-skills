@@ -8,7 +8,7 @@ for s in gzh-motion-diagram; do
   rsync -a --delete --exclude _review --exclude .hyperframes --exclude .DS_Store "$SKILLS_SRC/$s/" "./$s/"
 done
 # 同步后自查：不允许出现本机绝对路径
-if grep -rn -E '/Users/|/home/[a-z]' --exclude=sync.sh --exclude-dir=.git . ; then
+if grep -rn -E '/Users/[A-Za-z0-9]|/home/[a-z]' --exclude=sync.sh --exclude-dir=.git . ; then
   echo "✗ 发现本机绝对路径，请先脱敏再提交"; exit 1
 fi
 echo "✓ 已同步，git status 查看改动"
